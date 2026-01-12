@@ -14,6 +14,7 @@ import {
 import { getCachedProfile, saveProfileToCache } from '../services/profileCache'
 import { getPublicKeyFromExtension } from '../services/nip07'
 import { sortFolloweesByCoverage, getReadRelaysFromRelayInfo } from '../utils/coverage'
+import { normalizeRelayUrl } from '../utils/relay'
 import { BOOTSTRAP_RELAYS, BATCH_SIZE_AUTHORS } from '../constants'
 import type { UserProfile, RelayInfo, FolloweeAnalysis, RelayStatusItem, NostrEvent } from '../types'
 
@@ -234,9 +235,10 @@ export function useNostr() {
           const relays = parseRelayList(event)
           const writeRelays = relays.filter((r) => r.write).map((r) => r.url)
 
-          // Calculate coverage
-          const readableRelays = writeRelays.filter((url) => userReadRelays.includes(url))
-          const unreadableRelays = writeRelays.filter((url) => !userReadRelays.includes(url))
+          // Calculate coverage (normalize URLs before comparing)
+          const normalizedUserReadRelays = userReadRelays.map(normalizeRelayUrl)
+          const readableRelays = writeRelays.filter((url) => normalizedUserReadRelays.includes(normalizeRelayUrl(url)))
+          const unreadableRelays = writeRelays.filter((url) => !normalizedUserReadRelays.includes(normalizeRelayUrl(url)))
 
           // Get existing profile
           let profile: UserProfile = { pubkey: followeePubkey }

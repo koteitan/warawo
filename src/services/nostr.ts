@@ -1,13 +1,41 @@
-import { createRxNostr, createRxBackwardReq, createRxForwardReq, noopVerifier, type RxNostr } from 'rx-nostr'
+import { createRxNostr, createRxBackwardReq, noopVerifier, type RxNostr } from 'rx-nostr'
 import { nip19 } from 'nostr-tools'
 import { BOOTSTRAP_RELAYS, TIMEOUT_MS, LIMIT_EVENTS } from '../constants'
 import type { NostrEvent, UserProfile, RelayInfo } from '../types'
 
 let rxNostr: RxNostr | null = null
 
+// Track relay failure counts
+const relayFailureCounts = new Map<string, number>()
+const MAX_RELAY_FAILURES = 3
+
+export function recordRelayFailure(relayUrl: string): void {
+  const count = relayFailureCounts.get(relayUrl) || 0
+  relayFailureCounts.set(relayUrl, count + 1)
+}
+
+export function filterHealthyRelays(relays: string[]): string[] {
+  return relays.filter((url) => {
+    const failures = relayFailureCounts.get(url) || 0
+    return failures < MAX_RELAY_FAILURES
+  })
+}
+
+export function resetRelayFailures(): void {
+  relayFailureCounts.clear()
+}
+
 export function getRxNostr(): RxNostr {
   if (!rxNostr) {
     rxNostr = createRxNostr({ verifier: noopVerifier })
+    // Monitor connection state changes to track failures
+    rxNostr.createConnectionStateObservable().subscribe({
+      next: (state) => {
+        if (state.state === 'error' || state.state === 'rejected') {
+          recordRelayFailure(state.from)
+        }
+      },
+    })
   }
   return rxNostr
 }
@@ -30,11 +58,25 @@ export function normalizePubkey(input: string): string | null {
   return null
 }
 
+function isLocalRelay(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname
+    return host === '127.0.0.1' || host === 'localhost' || host.startsWith('192.168.') || host.startsWith('10.')
+  } catch {
+    return false
+  }
+}
+
 export function parseRelayList(event: NostrEvent): RelayInfo[] {
   const relays: RelayInfo[] = []
   for (const tag of event.tags) {
     if (tag[0] === 'r' && tag[1]) {
       const url = tag[1]
+      // Skip local relays
+      if (isLocalRelay(url)) {
+        continue
+      }
       const marker = tag[2]
       let read = true
       let write = true
@@ -79,7 +121,11 @@ export async function fetchKind10002(
   timeoutMs: number = TIMEOUT_MS
 ): Promise<NostrEvent | null> {
   const client = getRxNostr()
-  client.setDefaultRelays(relays)
+  const healthyRelays = filterHealthyRelays(relays)
+  if (healthyRelays.length === 0) {
+    return null
+  }
+  client.setDefaultRelays(healthyRelays)
 
   return new Promise((resolve) => {
     let resolved = false
@@ -125,7 +171,11 @@ export async function fetchKind3(
   timeoutMs: number = TIMEOUT_MS
 ): Promise<NostrEvent | null> {
   const client = getRxNostr()
-  client.setDefaultRelays(relays)
+  const healthyRelays = filterHealthyRelays(relays)
+  if (healthyRelays.length === 0) {
+    return null
+  }
+  client.setDefaultRelays(healthyRelays)
 
   return new Promise((resolve) => {
     let resolved = false
@@ -171,7 +221,11 @@ export async function fetchKind0(
   timeoutMs: number = TIMEOUT_MS
 ): Promise<NostrEvent | null> {
   const client = getRxNostr()
-  client.setDefaultRelays(relays)
+  const healthyRelays = filterHealthyRelays(relays)
+  if (healthyRelays.length === 0) {
+    return null
+  }
+  client.setDefaultRelays(healthyRelays)
 
   return new Promise((resolve) => {
     let resolved = false
@@ -227,14 +281,18 @@ export function subscribeFolloweesKind10002(
   batchSize: number = 50
 ): () => void {
   const client = getRxNostr()
-  client.setDefaultRelays(relays)
+  const healthyRelays = filterHealthyRelays(relays)
+  if (healthyRelays.length === 0) {
+    return () => {}
+  }
+  client.setDefaultRelays(healthyRelays)
 
   const subscriptions: Array<{ unsubscribe: () => void }> = []
   const latestEvents = new Map<string, NostrEvent>()
 
   for (let i = 0; i < pubkeys.length; i += batchSize) {
     const batch = pubkeys.slice(i, i + batchSize)
-    const req = createRxForwardReq()
+    const req = createRxBackwardReq()
 
     const subscription = client.use(req).subscribe({
       next: (packet) => {
@@ -267,14 +325,18 @@ export function subscribeFolloweesKind0(
   batchSize: number = 50
 ): () => void {
   const client = getRxNostr()
-  client.setDefaultRelays(relays)
+  const healthyRelays = filterHealthyRelays(relays)
+  if (healthyRelays.length === 0) {
+    return () => {}
+  }
+  client.setDefaultRelays(healthyRelays)
 
   const subscriptions: Array<{ unsubscribe: () => void }> = []
   const latestEvents = new Map<string, NostrEvent>()
 
   for (let i = 0; i < pubkeys.length; i += batchSize) {
     const batch = pubkeys.slice(i, i + batchSize)
-    const req = createRxForwardReq()
+    const req = createRxBackwardReq()
 
     const subscription = client.use(req).subscribe({
       next: (packet) => {

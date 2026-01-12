@@ -4,6 +4,7 @@ import { Header } from './components/Header'
 import { RelayStatusBar } from './components/RelayStatusBar'
 import { AnalysisTable } from './components/AnalysisTable'
 import { useNostr } from './hooks/useNostr'
+import { dump } from './utils/debug'
 import './App.css'
 
 function App() {
@@ -32,6 +33,11 @@ function App() {
       }
     })
   }, [])
+
+  // Expose dump function to window for debugging
+  useEffect(() => {
+    (window as unknown as { dump: () => void }).dump = () => dump(userProfile, userRelays, followeeAnalyses)
+  }, [userProfile, userRelays, followeeAnalyses])
 
   const handlePubkeyChange = (pk: string) => {
     setPubkey(pk)
