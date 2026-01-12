@@ -1,5 +1,5 @@
 export function formatRelayName(url: string): string {
-  return url.replace(/^wss?:\/\//, '')
+  return url.replace(/^wss?:\/\//, '').replace(/\/$/, '')
 }
 
 export function formatRelayNameFolded(url: string): string {
@@ -13,9 +13,5 @@ export function formatRelayNameFolded(url: string): string {
 }
 
 export function normalizeRelayUrl(url: string): string {
-  let normalized = url.trim().toLowerCase()
-  if (!normalized.endsWith('/')) {
-    normalized += '/'
-  }
-  return normalized
+  return url.trim().toLowerCase().replace(/\/$/, '')
 }
