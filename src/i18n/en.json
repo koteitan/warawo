@@ -38,6 +38,6 @@
     "noExtension": "NIP-07 extension not found",
     "noPubkey": "No pubkey available",
     "profileLoadingSkipped": "Found {{count}} followees. Profile loading skipped.",
-    "mobileAlert": "This will make many requests to multiple relays to load profile icons. Continue?"
+    "mobileAlert": "This will make many requests to multiple relays to load profile icons. On mobile devices, this may increase data usage. Continue?"
   }
 }
