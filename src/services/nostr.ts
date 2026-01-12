@@ -1,6 +1,6 @@
 import { createRxNostr, createRxBackwardReq, noopVerifier, type RxNostr } from 'rx-nostr'
 import { nip19 } from 'nostr-tools'
-import { BOOTSTRAP_RELAYS, TIMEOUT_MS, LIMIT_EVENTS, BATCH_SIZE_AUTHORS } from '../constants'
+import { BOOTSTRAP_RELAYS, TIMEOUT_MS, LIMIT_EVENTS, BATCH_SIZE_AUTHORS, MAX_CONCURRENT_REQS_PER_RELAY } from '../constants'
 import type { NostrEvent, UserProfile, RelayInfo } from '../types'
 
 let rxNostr: RxNostr | null = null
@@ -250,7 +250,6 @@ export function getRxNostr(): RxNostr {
   if (!rxNostr) {
     rxNostr = createRxNostr({
       verifier: noopVerifier,
-      // Suppress WebSocket connection error logs
       connectionStrategy: 'lazy',
       eoseTimeout: TIMEOUT_MS,
       okTimeout: TIMEOUT_MS,
@@ -619,11 +618,12 @@ export function subscribeFolloweesRelayList(
   const latestEvents10002 = new Map<string, NostrEvent>()
   const latestEvents3 = new Map<string, NostrEvent>()
   let cancelled = false
-  let currentSubscription: { unsubscribe: () => void } | null = null
+  const activeSubscriptions: { unsubscribe: () => void }[] = []
+  const batchTimeouts: ReturnType<typeof setTimeout>[] = []
 
   const totalBatches = Math.ceil(pubkeys.length / batchSize)
-
-  let batchTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let nextBatchIndex = 0
+  let completedBatches = 0
 
   // Determine which kinds to request
   const kinds: number[] = []
@@ -635,16 +635,21 @@ export function subscribeFolloweesRelayList(
     return () => {}
   }
 
-  const processBatch = (batchIndex: number) => {
-    if (cancelled || batchIndex >= totalBatches) {
-      callbacks.onComplete?.()
+  const startNextBatch = () => {
+    if (cancelled || nextBatchIndex >= totalBatches) {
       return
     }
+
+    const batchIndex = nextBatchIndex
+    nextBatchIndex++
 
     // Filter healthy relays for each batch (skip relays with too many failures)
     const healthyRelays = filterHealthyRelays(relays)
     if (healthyRelays.length === 0) {
-      callbacks.onComplete?.()
+      completedBatches++
+      if (completedBatches >= totalBatches) {
+        callbacks.onComplete?.()
+      }
       return
     }
     client.setDefaultRelays(healthyRelays)
@@ -660,20 +665,29 @@ export function subscribeFolloweesRelayList(
     }
 
     let batchCompleted = false
+    let batchTimeoutId: ReturnType<typeof setTimeout> | null = null
+
     const completeBatch = () => {
       if (batchCompleted || cancelled) return
       batchCompleted = true
       if (batchTimeoutId) {
         clearTimeout(batchTimeoutId)
-        batchTimeoutId = null
+        const idx = batchTimeouts.indexOf(batchTimeoutId)
+        if (idx !== -1) batchTimeouts.splice(idx, 1)
       }
       for (const relay of healthyRelays) {
         recordSubEOSE(subId, relay)
       }
-      processBatch(batchIndex + 1)
+      completedBatches++
+      if (completedBatches >= totalBatches) {
+        callbacks.onComplete?.()
+      } else {
+        // Start next batch when one completes
+        startNextBatch()
+      }
     }
 
-    currentSubscription = client.use(req).subscribe({
+    const subscription = client.use(req).subscribe({
       next: (packet) => {
         const event = packet.event as NostrEvent
         const kind = event.kind
@@ -705,6 +719,8 @@ export function subscribeFolloweesRelayList(
       },
     })
 
+    activeSubscriptions.push(subscription)
+
     req.emit([{
       kinds,
       authors: batch,
@@ -715,18 +731,21 @@ export function subscribeFolloweesRelayList(
     batchTimeoutId = setTimeout(() => {
       completeBatch()
     }, TIMEOUT_MS)
+    batchTimeouts.push(batchTimeoutId)
   }
 
-  // Start processing first batch
-  processBatch(0)
+  // Start initial concurrent batches
+  for (let i = 0; i < MAX_CONCURRENT_REQS_PER_RELAY && i < totalBatches; i++) {
+    startNextBatch()
+  }
 
   return () => {
     cancelled = true
-    if (batchTimeoutId) {
-      clearTimeout(batchTimeoutId)
+    for (const timeout of batchTimeouts) {
+      clearTimeout(timeout)
     }
-    if (currentSubscription) {
-      currentSubscription.unsubscribe()
+    for (const sub of activeSubscriptions) {
+      sub.unsubscribe()
     }
   }
 }
@@ -800,11 +819,10 @@ export function subscribeFolloweesKind0(
         for (const relay of healthyRelays) {
           recordSubError(subId, relay, String(err))
         }
-        // Don't start next batch on error - wait for timeout
+        completeBatch()
       },
       complete: () => {
-        // Don't start next batch on complete - wait for timeout
-        // rx-nostr may complete before all relays respond
+        completeBatch()
       },
     })
 
@@ -814,7 +832,7 @@ export function subscribeFolloweesKind0(
     }])
     req.over()
 
-    // Wait fixed time before starting next batch
+    // Timeout fallback in case complete callback never fires
     batchTimeoutId = setTimeout(() => {
       completeBatch()
     }, TIMEOUT_MS)

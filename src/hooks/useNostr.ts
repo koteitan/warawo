@@ -163,8 +163,13 @@ export function useNostr() {
     const followees = parseContactList(contactEvent)
 
     // Initialize followeeAnalyses with cached profiles or empty profiles
+    // Also collect pubkeys that need profile fetching (not in cache)
+    const uncachedPubkeys: string[] = []
     const initialAnalyses: FolloweeAnalysis[] = followees.map((followeePubkey) => {
       const cached = getCachedProfile(followeePubkey)
+      if (!cached) {
+        uncachedPubkeys.push(followeePubkey)
+      }
       const profile = cached || { pubkey: followeePubkey }
       return {
         profile,
@@ -184,9 +189,14 @@ export function useNostr() {
       statusMessage: t('messages.foundFollowees', { count: followees.length }),
     }))
 
-    // Subscribe to followees' profiles in background
+    // Subscribe to followees' profiles in background (only for uncached profiles)
+    if (uncachedPubkeys.length === 0) {
+      isLoadingRef.current = false
+      return
+    }
+
     const unsubscribeProfiles = subscribeFolloweesKind0(
-      followees,
+      uncachedPubkeys,
       allRelays,
       {
         onProfile: (followeePubkey, event) => {
@@ -252,61 +262,44 @@ export function useNostr() {
       const info = relayInfoMap.get(followeePubkey)
       if (!info) return
 
-      // Parse relay list from kind:10002 (NIP-65 format in tags)
-      let relays10002 = info.kind10002 ? parseRelayList(info.kind10002) : []
-      // Parse relay list from kind:3 (legacy format in content)
-      let relays3 = info.kind3 ? parseRelayListFromKind3(info.kind3) : []
-
-      // Merge relay lists (kind:10002 takes priority, add unique from kind:3)
-      const allRelayUrls = new Set(relays10002.map(r => r.url))
-      const mergedRelays = [...relays10002]
-      for (const relay of relays3) {
-        if (!allRelayUrls.has(relay.url)) {
-          mergedRelays.push(relay)
-        }
+      // Use kind:10002 if available, otherwise fall back to kind:3
+      let relays: RelayInfo[]
+      if (info.kind10002) {
+        // kind:10002 (NIP-65 format in tags) takes priority
+        relays = parseRelayList(info.kind10002)
+      } else if (info.kind3) {
+        // kind:3 (legacy format in content) is fallback only
+        relays = parseRelayListFromKind3(info.kind3)
+      } else {
+        relays = []
       }
 
-      const writeRelays = mergedRelays.filter((r) => r.write).map((r) => r.url)
+      const writeRelays = relays.filter((r) => r.write).map((r) => r.url)
 
       // Calculate coverage (normalize URLs before comparing)
       const normalizedUserReadRelays = userReadRelays.map(normalizeRelayUrl)
       const readableRelays = writeRelays.filter((url) => normalizedUserReadRelays.includes(normalizeRelayUrl(url)))
       const unreadableRelays = writeRelays.filter((url) => !normalizedUserReadRelays.includes(normalizeRelayUrl(url)))
 
-      // Get existing profile
-      let profile: UserProfile = { pubkey: followeePubkey }
+      // Update state, preserving existing profile if it has data
       setState((s) => {
         const existingAnalysis = s.followeeAnalyses.find(
           (a) => a.profile.pubkey === followeePubkey
         )
-        if (existingAnalysis) {
-          profile = existingAnalysis.profile
+
+        // Use existing profile if it has any data (name, display_name, or picture)
+        const existingProfile = existingAnalysis?.profile
+        const hasProfileData = existingProfile && (existingProfile.name || existingProfile.display_name || existingProfile.picture)
+        const profile = hasProfileData ? existingProfile : { pubkey: followeePubkey }
+
+        const updatedAnalysis: FolloweeAnalysis = {
+          profile,
+          writeRelays,
+          readableRelays,
+          unreadableRelays,
+          coverage: readableRelays.length,
         }
-        return s
-      })
 
-      // Check if profile is missing (no name, display_name, picture)
-      const isProfileMissing = !profile.name && !profile.display_name && !profile.picture
-
-      // If profile is missing, try to fetch from followee's write relays
-      if (isProfileMissing && writeRelays.length > 0) {
-        const profileEvent = await fetchKind0(followeePubkey, writeRelays)
-        if (profileEvent) {
-          const profileData = parseProfile(profileEvent)
-          profile = { pubkey: followeePubkey, ...profileData }
-          saveProfileToCache(profile)
-        }
-      }
-
-      const updatedAnalysis: FolloweeAnalysis = {
-        profile,
-        writeRelays,
-        readableRelays,
-        unreadableRelays,
-        coverage: readableRelays.length,
-      }
-
-      setState((s) => {
         // Update the analysis and re-sort
         const otherAnalyses = s.followeeAnalyses.filter(
           (a) => a.profile.pubkey !== followeePubkey
