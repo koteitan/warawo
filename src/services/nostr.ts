@@ -58,6 +58,11 @@ const queue10002Status: QueueStatus = {
   receivedPubkeys: new Set(),
 }
 
+const queue3Status: QueueStatus = {
+  requestedPubkeys: [],
+  receivedPubkeys: new Set(),
+}
+
 const queue0Status: QueueStatus = {
   requestedPubkeys: [],
   receivedPubkeys: new Set(),
@@ -164,7 +169,7 @@ export function dumpsubsum(): void {
   console.log(`total working: ${working.length}`)
 }
 
-export function dumpqueue10002(): void {
+export function dumprelaylist(): void {
   const requested = queue10002Status.requestedPubkeys.length
   const received = queue10002Status.receivedPubkeys.size
   const pending = requested - received
@@ -243,13 +248,22 @@ export function dumpStatus(): void {
 
 export function getRxNostr(): RxNostr {
   if (!rxNostr) {
-    rxNostr = createRxNostr({ verifier: noopVerifier })
+    rxNostr = createRxNostr({
+      verifier: noopVerifier,
+      // Suppress WebSocket connection error logs
+      connectionStrategy: 'lazy',
+      eoseTimeout: TIMEOUT_MS,
+      okTimeout: TIMEOUT_MS,
+    })
     // Monitor connection state changes to track failures
     rxNostr.createConnectionStateObservable().subscribe({
       next: (state) => {
         if (state.state === 'error' || state.state === 'rejected') {
           recordRelayFailure(state.from)
         }
+      },
+      error: () => {
+        // Suppress connection state observable errors
       },
     })
   }
@@ -316,6 +330,32 @@ export function parseContactList(event: NostrEvent): string[] {
     }
   }
   return pubkeys
+}
+
+// Parse relay list from kind:3 content (legacy format)
+// Format: {"wss://relay.example.com": {"read": true, "write": true}, ...}
+export function parseRelayListFromKind3(event: NostrEvent): RelayInfo[] {
+  const relays: RelayInfo[] = []
+  try {
+    if (!event.content) return relays
+    const content = JSON.parse(event.content)
+    for (const [url, settings] of Object.entries(content)) {
+      if (typeof url === 'string' && url.startsWith('wss://')) {
+        const normalized = normalizeRelayUrlForTracking(url)
+        if (isLocalRelay(normalized)) continue
+        const s = settings as { read?: boolean; write?: boolean }
+        relays.push({
+          url: normalized,
+          read: s.read !== false,
+          write: s.write !== false,
+          status: 'wait',
+        })
+      }
+    }
+  } catch {
+    // Invalid JSON, return empty
+  }
+  return relays
 }
 
 export function parseProfile(event: NostrEvent): Partial<UserProfile> {
@@ -547,7 +587,7 @@ export async function fetchKind0(
 }
 
 export interface FolloweeRelayCallback {
-  onEvent: (pubkey: string, event: NostrEvent) => void
+  onEvent: (pubkey: string, event: NostrEvent, kind: number) => void
   onRelayStatus: (relay: string, status: 'connecting' | 'loading' | 'eose' | 'timeout' | 'error') => void
   onComplete?: () => void
 }
@@ -556,10 +596,16 @@ export interface ProfileCallback {
   onProfile: (pubkey: string, event: NostrEvent) => void
 }
 
-export function subscribeFolloweesKind10002(
+export interface RelayListSubscriptionOptions {
+  useKind10002: boolean
+  useKind3: boolean
+}
+
+export function subscribeFolloweesRelayList(
   pubkeys: string[],
   relays: string[],
   callbacks: FolloweeRelayCallback,
+  options: RelayListSubscriptionOptions,
   batchSize: number = 20
 ): () => void {
   const client = getRxNostr()
@@ -567,14 +613,27 @@ export function subscribeFolloweesKind10002(
   // Track queue status
   queue10002Status.requestedPubkeys = [...pubkeys]
   queue10002Status.receivedPubkeys.clear()
+  queue3Status.requestedPubkeys = [...pubkeys]
+  queue3Status.receivedPubkeys.clear()
 
-  const latestEvents = new Map<string, NostrEvent>()
+  const latestEvents10002 = new Map<string, NostrEvent>()
+  const latestEvents3 = new Map<string, NostrEvent>()
   let cancelled = false
   let currentSubscription: { unsubscribe: () => void } | null = null
 
   const totalBatches = Math.ceil(pubkeys.length / batchSize)
 
   let batchTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+  // Determine which kinds to request
+  const kinds: number[] = []
+  if (options.useKind10002) kinds.push(10002)
+  if (options.useKind3) kinds.push(3)
+
+  if (kinds.length === 0) {
+    callbacks.onComplete?.()
+    return () => {}
+  }
 
   const processBatch = (batchIndex: number) => {
     if (cancelled || batchIndex >= totalBatches) {
@@ -595,9 +654,9 @@ export function subscribeFolloweesKind10002(
     const req = createRxBackwardReq()
 
     // Record subscription start for each relay
-    const subId = `10002-batch-${batchIndex}`
+    const subId = `relaylist-batch-${batchIndex}`
     for (const relay of healthyRelays) {
-      recordSubStart(subId, 'followee relay list', 10002, relay, batch)
+      recordSubStart(subId, 'followee relay list', kinds[0], relay, batch)
     }
 
     let batchCompleted = false
@@ -617,11 +676,22 @@ export function subscribeFolloweesKind10002(
     currentSubscription = client.use(req).subscribe({
       next: (packet) => {
         const event = packet.event as NostrEvent
-        const existing = latestEvents.get(event.pubkey)
-        if (!existing || event.created_at > existing.created_at) {
-          latestEvents.set(event.pubkey, event)
-          queue10002Status.receivedPubkeys.add(event.pubkey)
-          callbacks.onEvent(event.pubkey, event)
+        const kind = event.kind
+
+        if (kind === 10002) {
+          const existing = latestEvents10002.get(event.pubkey)
+          if (!existing || event.created_at > existing.created_at) {
+            latestEvents10002.set(event.pubkey, event)
+            queue10002Status.receivedPubkeys.add(event.pubkey)
+            callbacks.onEvent(event.pubkey, event, 10002)
+          }
+        } else if (kind === 3) {
+          const existing = latestEvents3.get(event.pubkey)
+          if (!existing || event.created_at > existing.created_at) {
+            latestEvents3.set(event.pubkey, event)
+            queue3Status.receivedPubkeys.add(event.pubkey)
+            callbacks.onEvent(event.pubkey, event, 3)
+          }
         }
       },
       error: (err) => {
@@ -636,7 +706,7 @@ export function subscribeFolloweesKind10002(
     })
 
     req.emit([{
-      kinds: [10002],
+      kinds,
       authors: batch,
     }])
     req.over()

@@ -5,6 +5,32 @@ import { hasNip07Extension } from '../services/nip07'
 import { hexToNpub } from '../utils/pubkey'
 import { VERSION_NAME } from '../version'
 
+function UserInfo({ profile }: { profile: UserProfile }) {
+  const [imgError, setImgError] = useState(false)
+
+  // Reset error state when picture URL changes
+  useEffect(() => {
+    setImgError(false)
+  }, [profile.picture])
+
+  return (
+    <div className="user-info">
+      {profile.picture && !imgError ? (
+        <img
+          src={profile.picture}
+          alt=""
+          className="user-icon"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <div className="user-icon-placeholder" />
+      )}
+      <span className="user-name">{profile.name || ''}</span>
+      <span className="user-display-name">{profile.display_name || ''}</span>
+    </div>
+  )
+}
+
 interface HeaderProps {
   pubkey: string
   userProfile: UserProfile | null
@@ -76,17 +102,7 @@ export function Header({
           </button>
         )}
         {userProfile && (
-          <div className="user-info">
-            {userProfile.picture && (
-              <img
-                src={userProfile.picture}
-                alt=""
-                className="user-icon"
-              />
-            )}
-            <span className="user-name">{userProfile.name || ''}</span>
-            <span className="user-display-name">{userProfile.display_name || ''}</span>
-          </div>
+          <UserInfo profile={userProfile} />
         )}
       </div>
     </header>

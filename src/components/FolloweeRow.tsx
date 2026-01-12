@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import type { FolloweeAnalysis } from '../types'
 import { RelayList } from './RelayList'
 import { hexToNpub } from '../utils/pubkey'
@@ -12,14 +13,25 @@ export function FolloweeRow({ rank, analysis }: FolloweeRowProps) {
   const isAnalyzed = coverage !== -1
   const npub = hexToNpub(profile.pubkey)
   const nostterUrl = `https://nostter.app/${npub}`
+  const [imgError, setImgError] = useState(false)
+
+  // Reset error state when picture URL changes
+  useEffect(() => {
+    setImgError(false)
+  }, [profile.picture])
 
   return (
     <tr className="followee-row">
       <td className="rank-cell">{rank !== null ? rank : '-'}</td>
       <td className="icon-cell">
         <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
-          {profile.picture ? (
-            <img src={profile.picture} alt="" className="followee-icon" />
+          {profile.picture && !imgError ? (
+            <img
+              src={profile.picture}
+              alt=""
+              className="followee-icon"
+              onError={() => setImgError(true)}
+            />
           ) : (
             <div className="followee-icon-placeholder" />
           )}

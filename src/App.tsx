@@ -1,15 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Header } from './components/Header'
 import { RelayStatusBar } from './components/RelayStatusBar'
 import { AnalysisTable } from './components/AnalysisTable'
 import { useNostr } from './hooks/useNostr'
 import { dump } from './utils/debug'
-import { dumpqueue10002, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub, dumpsubsum } from './services/nostr'
+import { dumprelaylist, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub, dumpsubsum } from './services/nostr'
 import './App.css'
 
 function App() {
   const { t } = useTranslation()
+  const [useKind10002, setUseKind10002] = useState(true)
+  const [useKind3, setUseKind3] = useState(true)
   const {
     pubkey,
     userProfile,
@@ -39,7 +41,7 @@ function App() {
   useEffect(() => {
     const w = window as unknown as {
       dump: () => void
-      dumpqueue10002: () => void
+      dumprelaylist: () => void
       dumpqueue0: () => void
       dumpRelayFailures: () => void
       dumpStatus: () => void
@@ -47,7 +49,7 @@ function App() {
       dumpsubsum: () => void
     }
     w.dump = () => dump(userProfile, userRelays, followeeAnalyses)
-    w.dumpqueue10002 = dumpqueue10002
+    w.dumprelaylist = dumprelaylist
     w.dumpqueue0 = dumpqueue0
     w.dumpRelayFailures = dumpRelayFailures
     w.dumpStatus = dumpStatus
@@ -98,11 +100,31 @@ function App() {
           <div className="analyze-section">
             <button
               className="analyze-button"
-              onClick={startAnalysis}
-              disabled={isAnalyzing}
+              onClick={() => startAnalysis({ useKind10002, useKind3 })}
+              disabled={isAnalyzing || (!useKind10002 && !useKind3)}
             >
               {t('actions.analyzeFollowees')}
             </button>
+            <div className="kind-checkboxes">
+              <label className="kind-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={useKind10002}
+                  onChange={(e) => setUseKind10002(e.target.checked)}
+                  disabled={isAnalyzing}
+                />
+                kind:10002
+              </label>
+              <label className="kind-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={useKind3}
+                  onChange={(e) => setUseKind3(e.target.checked)}
+                  disabled={isAnalyzing}
+                />
+                kind:3
+              </label>
+            </div>
           </div>
         )}
         {followeeAnalyses.length > 0 && userProfile && (

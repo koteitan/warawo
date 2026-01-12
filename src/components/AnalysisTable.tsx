@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { UserProfile, RelayInfo, FolloweeAnalysis } from '../types'
 import { FolloweeRow } from './FolloweeRow'
@@ -8,6 +9,51 @@ interface AnalysisTableProps {
   userProfile: UserProfile | null
   userRelays: RelayInfo[]
   followeeAnalyses: FolloweeAnalysis[]
+}
+
+function UserRow({ profile, readRelays, t }: { profile: UserProfile; readRelays: string[]; t: (key: string) => string }) {
+  const [imgError, setImgError] = useState(false)
+  const npub = hexToNpub(profile.pubkey)
+  const nostterUrl = `https://nostter.app/${npub}`
+
+  // Reset error state when picture URL changes
+  useEffect(() => {
+    setImgError(false)
+  }, [profile.picture])
+
+  return (
+    <tr className="user-row">
+      <td className="rank-cell">{t('table.you')}</td>
+      <td className="icon-cell">
+        <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
+          {profile.picture && !imgError ? (
+            <img
+              src={profile.picture}
+              alt=""
+              className="user-table-icon"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="user-icon-placeholder" />
+          )}
+        </a>
+      </td>
+      <td className="name-cell">
+        <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
+          {profile.name || '-'}
+        </a>
+      </td>
+      <td className="display-name-cell">
+        <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
+          {profile.display_name || '-'}
+        </a>
+      </td>
+      <td className="coverage-cell">-</td>
+      <td className="relays-cell">
+        <RelayList readableRelays={readRelays} unreadableRelays={[]} />
+      </td>
+    </tr>
+  )
 }
 
 function calculateRanks(analyses: FolloweeAnalysis[]): (number | null)[] {
@@ -62,38 +108,9 @@ export function AnalysisTable({
         </tr>
       </thead>
       <tbody>
-        {userProfile && (() => {
-          const npub = hexToNpub(userProfile.pubkey)
-          const nostterUrl = `https://nostter.app/${npub}`
-          return (
-            <tr className="user-row">
-              <td className="rank-cell">{t('table.you')}</td>
-              <td className="icon-cell">
-                <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
-                  {userProfile.picture ? (
-                    <img src={userProfile.picture} alt="" className="user-table-icon" />
-                  ) : (
-                    <div className="user-icon-placeholder" />
-                  )}
-                </a>
-              </td>
-              <td className="name-cell">
-                <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
-                  {userProfile.name || '-'}
-                </a>
-              </td>
-              <td className="display-name-cell">
-                <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
-                  {userProfile.display_name || '-'}
-                </a>
-              </td>
-              <td className="coverage-cell">-</td>
-              <td className="relays-cell">
-                <RelayList readableRelays={userReadRelays} unreadableRelays={[]} />
-              </td>
-            </tr>
-          )
-        })()}
+        {userProfile && (
+          <UserRow profile={userProfile} readRelays={userReadRelays} t={t} />
+        )}
         {followeeAnalyses.map((analysis, index) => (
           <FolloweeRow
             key={analysis.profile.pubkey}
