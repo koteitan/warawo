@@ -549,6 +549,7 @@ export async function fetchKind0(
 export interface FolloweeRelayCallback {
   onEvent: (pubkey: string, event: NostrEvent) => void
   onRelayStatus: (relay: string, status: 'connecting' | 'loading' | 'eose' | 'timeout' | 'error') => void
+  onComplete?: () => void
 }
 
 export interface ProfileCallback {
@@ -562,13 +563,6 @@ export function subscribeFolloweesKind10002(
   batchSize: number = 20
 ): () => void {
   const client = getRxNostr()
-  const healthyRelays = filterHealthyRelays(relays)
-  console.log(`[10002] Using ${healthyRelays.length} relays:`, healthyRelays)
-  if (healthyRelays.length === 0) {
-    console.log(`[10002] No healthy relays available!`)
-    return () => {}
-  }
-  client.setDefaultRelays(healthyRelays)
 
   // Track queue status
   queue10002Status.requestedPubkeys = [...pubkeys]
@@ -580,15 +574,24 @@ export function subscribeFolloweesKind10002(
 
   const totalBatches = Math.ceil(pubkeys.length / batchSize)
 
+  let batchTimeoutId: ReturnType<typeof setTimeout> | null = null
+
   const processBatch = (batchIndex: number) => {
     if (cancelled || batchIndex >= totalBatches) {
-      console.log(`[10002] All ${totalBatches} batches completed`)
+      callbacks.onComplete?.()
       return
     }
 
+    // Filter healthy relays for each batch (skip relays with too many failures)
+    const healthyRelays = filterHealthyRelays(relays)
+    if (healthyRelays.length === 0) {
+      callbacks.onComplete?.()
+      return
+    }
+    client.setDefaultRelays(healthyRelays)
+
     const start = batchIndex * batchSize
     const batch = pubkeys.slice(start, start + batchSize)
-    console.log(`[10002] Starting batch ${batchIndex + 1}/${totalBatches} with ${batch.length} authors:`, batch.map(p => p.slice(0, 8)))
     const req = createRxBackwardReq()
 
     // Record subscription start for each relay
@@ -601,6 +604,10 @@ export function subscribeFolloweesKind10002(
     const completeBatch = () => {
       if (batchCompleted || cancelled) return
       batchCompleted = true
+      if (batchTimeoutId) {
+        clearTimeout(batchTimeoutId)
+        batchTimeoutId = null
+      }
       for (const relay of healthyRelays) {
         recordSubEOSE(subId, relay)
       }
@@ -610,7 +617,6 @@ export function subscribeFolloweesKind10002(
     currentSubscription = client.use(req).subscribe({
       next: (packet) => {
         const event = packet.event as NostrEvent
-        console.log(`[10002] Received event from ${packet.from} for ${event.pubkey.slice(0, 8)}`)
         const existing = latestEvents.get(event.pubkey)
         if (!existing || event.created_at > existing.created_at) {
           latestEvents.set(event.pubkey, event)
@@ -619,25 +625,26 @@ export function subscribeFolloweesKind10002(
         }
       },
       error: (err) => {
-        console.log(`[10002] Error in batch ${batchIndex}: ${err}`)
         for (const relay of healthyRelays) {
           recordSubError(subId, relay, String(err))
         }
         completeBatch()
       },
       complete: () => {
-        console.log(`[10002] Batch ${batchIndex} complete`)
         completeBatch()
       },
     })
 
-    const filter = {
+    req.emit([{
       kinds: [10002],
       authors: batch,
-    }
-    console.log(`[10002] Filter:`, JSON.stringify(filter))
-    req.emit([filter])
+    }])
     req.over()
+
+    // Timeout fallback in case complete callback never fires
+    batchTimeoutId = setTimeout(() => {
+      completeBatch()
+    }, TIMEOUT_MS)
   }
 
   // Start processing first batch
@@ -645,6 +652,9 @@ export function subscribeFolloweesKind10002(
 
   return () => {
     cancelled = true
+    if (batchTimeoutId) {
+      clearTimeout(batchTimeoutId)
+    }
     if (currentSubscription) {
       currentSubscription.unsubscribe()
     }
@@ -658,11 +668,6 @@ export function subscribeFolloweesKind0(
   batchSize: number = 20
 ): () => void {
   const client = getRxNostr()
-  const healthyRelays = filterHealthyRelays(relays)
-  if (healthyRelays.length === 0) {
-    return () => {}
-  }
-  client.setDefaultRelays(healthyRelays)
 
   // Track queue status
   queue0Status.requestedPubkeys = [...pubkeys]
@@ -679,6 +684,13 @@ export function subscribeFolloweesKind0(
     if (cancelled || batchIndex >= totalBatches) {
       return
     }
+
+    // Filter healthy relays for each batch (skip relays with too many failures)
+    const healthyRelays = filterHealthyRelays(relays)
+    if (healthyRelays.length === 0) {
+      return
+    }
+    client.setDefaultRelays(healthyRelays)
 
     const start = batchIndex * batchSize
     const batch = pubkeys.slice(start, start + batchSize)

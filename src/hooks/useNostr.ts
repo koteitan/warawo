@@ -310,6 +310,13 @@ export function useNostr() {
             ),
           }))
         },
+        onComplete: () => {
+          setState((s) => ({
+            ...s,
+            isAnalyzing: false,
+            statusMessage: t('messages.analysisComplete', { count: analyzedCount, total: followees.length }),
+          }))
+        },
       },
       BATCH_SIZE_AUTHORS
     )

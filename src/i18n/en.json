@@ -33,6 +33,7 @@
     "foundFollowees": "Found {{count}} followees. Click \"Analyze Followees\" to start.",
     "noFollowees": "No followees found",
     "analyzingFollowees": "Analyzing {{current}}/{{total}} followees...",
+    "analysisComplete": "Analysis complete: Retrieved relay lists for {{count}}/{{total}} followees",
     "loadingProfiles": "Loading profiles...",
     "noExtension": "NIP-07 extension not found",
     "noPubkey": "No pubkey available"

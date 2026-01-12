@@ -33,6 +33,7 @@
     "foundFollowees": "{{count}}人のフォロイーが見つかりました。「フォロイーを分析」をクリックして開始してください。",
     "noFollowees": "フォロイーが見つかりません",
     "analyzingFollowees": "{{current}}/{{total}}人のフォロイーを分析中...",
+    "analysisComplete": "分析完了: {{count}}/{{total}}人のフォロイーのリレーリストを取得",
     "loadingProfiles": "プロフィール読み込み中...",
     "noExtension": "NIP-07拡張機能が見つかりません",
     "noPubkey": "pubkeyがありません"
