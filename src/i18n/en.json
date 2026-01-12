@@ -1,0 +1,40 @@
+{
+  "app": {
+    "title": "warawo: Nostr Relay Analysis"
+  },
+  "actions": {
+    "analyzeFollowees": "Analyze Followees"
+  },
+  "header": {
+    "pubkeyPlaceholder": "Enter pubkey or npub...",
+    "loadFromExtension": "Load from extension"
+  },
+  "status": {
+    "wait": "Waiting",
+    "connecting": "Connecting",
+    "loading": "Loading",
+    "eose": "Complete",
+    "timeout": "Timeout",
+    "error": "Error"
+  },
+  "table": {
+    "rank": "Rank",
+    "you": "You",
+    "name": "Name",
+    "displayName": "Display Name",
+    "coverage": "Coverage",
+    "relays": "Relays"
+  },
+  "messages": {
+    "enterPubkey": "Please enter your pubkey",
+    "loadingProfile": "Loading profile...",
+    "loadingRelays": "Loading relay list...",
+    "loadingFollowees": "Loading followees...",
+    "foundFollowees": "Found {{count}} followees. Click \"Analyze Followees\" to start.",
+    "noFollowees": "No followees found",
+    "analyzingFollowees": "Analyzing {{current}}/{{total}} followees...",
+    "loadingProfiles": "Loading profiles...",
+    "noExtension": "NIP-07 extension not found",
+    "noPubkey": "No pubkey available"
+  }
+}

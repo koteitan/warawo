@@ -1,0 +1,40 @@
+{
+  "app": {
+    "title": "warawo: Nostr リレー分析"
+  },
+  "actions": {
+    "analyzeFollowees": "フォロイーを分析"
+  },
+  "header": {
+    "pubkeyPlaceholder": "pubkey または npub を入力...",
+    "loadFromExtension": "拡張機能から読み込む"
+  },
+  "status": {
+    "wait": "待機中",
+    "connecting": "接続中",
+    "loading": "読込中",
+    "eose": "完了",
+    "timeout": "タイムアウト",
+    "error": "エラー"
+  },
+  "table": {
+    "rank": "順位",
+    "you": "あなた",
+    "name": "名前",
+    "displayName": "表示名",
+    "coverage": "カバレッジ",
+    "relays": "リレー"
+  },
+  "messages": {
+    "enterPubkey": "pubkeyを入力してください",
+    "loadingProfile": "プロフィール読み込み中...",
+    "loadingRelays": "リレーリスト読み込み中...",
+    "loadingFollowees": "フォロイー読み込み中...",
+    "foundFollowees": "{{count}}人のフォロイーが見つかりました。「フォロイーを分析」をクリックして開始してください。",
+    "noFollowees": "フォロイーが見つかりません",
+    "analyzingFollowees": "{{current}}/{{total}}人のフォロイーを分析中...",
+    "loadingProfiles": "プロフィール読み込み中...",
+    "noExtension": "NIP-07拡張機能が見つかりません",
+    "noPubkey": "pubkeyがありません"
+  }
+}
