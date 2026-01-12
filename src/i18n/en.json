@@ -36,6 +36,8 @@
     "analysisComplete": "Analysis complete: Retrieved relay lists for {{count}}/{{total}} followees",
     "loadingProfiles": "Loading profiles...",
     "noExtension": "NIP-07 extension not found",
-    "noPubkey": "No pubkey available"
+    "noPubkey": "No pubkey available",
+    "profileLoadingSkipped": "Found {{count}} followees. Profile loading skipped.",
+    "mobileAlert": "This will make many requests to multiple relays to load profile icons. Continue?"
   }
 }

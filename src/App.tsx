@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Header } from './components/Header'
 import { RelayStatusBar } from './components/RelayStatusBar'
@@ -6,6 +6,7 @@ import { AnalysisTable } from './components/AnalysisTable'
 import { useNostr } from './hooks/useNostr'
 import { dump } from './utils/debug'
 import { dumprelaylist, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub, dumpsubsum } from './services/nostr'
+import { isMobileDevice } from './utils/mobile'
 import './App.css'
 
 function App() {
@@ -28,11 +29,20 @@ function App() {
     startAnalysis,
   } = useNostr()
 
+  const loadUserDataWithMobileCheck = useCallback((pk: string) => {
+    if (isMobileDevice()) {
+      const confirmed = window.confirm(t('messages.mobileAlert'))
+      loadUserData(pk, { skipProfiles: !confirmed })
+    } else {
+      loadUserData(pk)
+    }
+  }, [loadUserData, t])
+
   useEffect(() => {
     // Load pubkey from NIP-07 extension on page load
     loadFromExtension().then((pk) => {
       if (pk) {
-        loadUserData(pk)
+        loadUserDataWithMobileCheck(pk)
       }
     })
   }, [])
@@ -63,14 +73,14 @@ function App() {
 
   const handlePubkeyBlur = (pk: string) => {
     if (pk.trim()) {
-      loadUserData(pk)
+      loadUserDataWithMobileCheck(pk)
     }
   }
 
   const handleLoadFromExtension = async () => {
     const pk = await loadFromExtension()
     if (pk) {
-      loadUserData(pk)
+      loadUserDataWithMobileCheck(pk)
     }
   }
 

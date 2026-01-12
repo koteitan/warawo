@@ -36,6 +36,8 @@
     "analysisComplete": "分析完了: {{count}}/{{total}}人のフォロイーのリレーリストを取得",
     "loadingProfiles": "プロフィール読み込み中...",
     "noExtension": "NIP-07拡張機能が見つかりません",
-    "noPubkey": "pubkeyがありません"
+    "noPubkey": "pubkeyがありません",
+    "profileLoadingSkipped": "{{count}}人のフォロイーが見つかりました。プロフィール読み込みはスキップされました。",
+    "mobileAlert": "プロフィールアイコンを読み込むために多数のリレーにアクセスします。続けますか？"
   }
 }

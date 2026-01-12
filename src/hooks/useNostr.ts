@@ -78,12 +78,13 @@ export function useNostr() {
     setState((s) => ({ ...s, pubkey: pk }))
   }, [])
 
-  const loadUserData = useCallback(async (inputPubkey: string) => {
+  const loadUserData = useCallback(async (inputPubkey: string, options?: { skipProfiles?: boolean }) => {
     // Skip if already loading (prevents React StrictMode double-call issues)
     if (isLoadingRef.current) {
       return
     }
     isLoadingRef.current = true
+    const skipProfiles = options?.skipProfiles ?? false
 
     const pubkey = normalizePubkey(inputPubkey)
     if (!pubkey) {
@@ -185,9 +186,17 @@ export function useNostr() {
       followees,
       followeeAnalyses: initialAnalyses,
       isLoading: false,
-      canAnalyze: true,
-      statusMessage: t('messages.foundFollowees', { count: followees.length }),
+      canAnalyze: !skipProfiles,
+      statusMessage: skipProfiles
+        ? t('messages.profileLoadingSkipped', { count: followees.length })
+        : t('messages.foundFollowees', { count: followees.length }),
     }))
+
+    // Skip profile loading if requested (mobile user cancelled)
+    if (skipProfiles) {
+      isLoadingRef.current = false
+      return
+    }
 
     // Subscribe to followees' profiles in background (only for uncached profiles)
     if (uncachedPubkeys.length === 0) {
