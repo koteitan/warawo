@@ -10,7 +10,7 @@ export const BOOTSTRAP_RELAYS = [
 
 export const TIMEOUT_MS = 7000
 export const LIMIT_EVENTS = 3
-export const BATCH_SIZE_AUTHORS = 50
+export const BATCH_SIZE_AUTHORS = 3
 
 export const RELAY_STATUS_COLORS: Record<string, string> = {
   wait: '#808080',       // gray

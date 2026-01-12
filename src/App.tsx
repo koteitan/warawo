@@ -5,6 +5,7 @@ import { RelayStatusBar } from './components/RelayStatusBar'
 import { AnalysisTable } from './components/AnalysisTable'
 import { useNostr } from './hooks/useNostr'
 import { dump } from './utils/debug'
+import { dumpqueue10002, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub } from './services/nostr'
 import './App.css'
 
 function App() {
@@ -34,9 +35,22 @@ function App() {
     })
   }, [])
 
-  // Expose dump function to window for debugging
+  // Expose debug functions to window for debugging
   useEffect(() => {
-    (window as unknown as { dump: () => void }).dump = () => dump(userProfile, userRelays, followeeAnalyses)
+    const w = window as unknown as {
+      dump: () => void
+      dumpqueue10002: () => void
+      dumpqueue0: () => void
+      dumpRelayFailures: () => void
+      dumpStatus: () => void
+      dumpsub: () => void
+    }
+    w.dump = () => dump(userProfile, userRelays, followeeAnalyses)
+    w.dumpqueue10002 = dumpqueue10002
+    w.dumpqueue0 = dumpqueue0
+    w.dumpRelayFailures = dumpRelayFailures
+    w.dumpStatus = dumpStatus
+    w.dumpsub = dumpsub
   }, [userProfile, userRelays, followeeAnalyses])
 
   const handlePubkeyChange = (pk: string) => {
