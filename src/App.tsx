@@ -5,7 +5,7 @@ import { RelayStatusBar } from './components/RelayStatusBar'
 import { AnalysisTable } from './components/AnalysisTable'
 import { useNostr } from './hooks/useNostr'
 import { dump } from './utils/debug'
-import { dumpqueue10002, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub } from './services/nostr'
+import { dumpqueue10002, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub, dumpsubsum } from './services/nostr'
 import './App.css'
 
 function App() {
@@ -44,6 +44,7 @@ function App() {
       dumpRelayFailures: () => void
       dumpStatus: () => void
       dumpsub: () => void
+      dumpsubsum: () => void
     }
     w.dump = () => dump(userProfile, userRelays, followeeAnalyses)
     w.dumpqueue10002 = dumpqueue10002
@@ -51,6 +52,7 @@ function App() {
     w.dumpRelayFailures = dumpRelayFailures
     w.dumpStatus = dumpStatus
     w.dumpsub = dumpsub
+    w.dumpsubsum = dumpsubsum
   }, [userProfile, userRelays, followeeAnalyses])
 
   const handlePubkeyChange = (pk: string) => {

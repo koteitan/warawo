@@ -10,6 +10,7 @@ import {
   subscribeFolloweesKind10002,
   subscribeFolloweesKind0,
   normalizePubkey,
+  clearSubStatuses,
 } from '../services/nostr'
 import { getCachedProfile, saveProfileToCache } from '../services/profileCache'
 import { getPublicKeyFromExtension } from '../services/nip07'
@@ -50,6 +51,7 @@ export function useNostr() {
   const unsubscribeProfilesRef = useRef<(() => void) | null>(null)
   const followeeRelaysRef = useRef<Map<string, NostrEvent>>(new Map())
   const userReadRelaysRef = useRef<string[]>([])
+  const isLoadingRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -76,8 +78,15 @@ export function useNostr() {
   }, [])
 
   const loadUserData = useCallback(async (inputPubkey: string) => {
+    // Skip if already loading (prevents React StrictMode double-call issues)
+    if (isLoadingRef.current) {
+      return
+    }
+    isLoadingRef.current = true
+
     const pubkey = normalizePubkey(inputPubkey)
     if (!pubkey) {
+      isLoadingRef.current = false
       setState((s) => ({ ...s, statusMessage: 'Invalid pubkey' }))
       return
     }
@@ -91,6 +100,9 @@ export function useNostr() {
       unsubscribeProfilesRef.current()
       unsubscribeProfilesRef.current = null
     }
+
+    // Clear subscription status tracking
+    clearSubStatuses()
 
     followeeRelaysRef.current.clear()
 
@@ -137,6 +149,7 @@ export function useNostr() {
     // Fetch followees (kind:3)
     const contactEvent = await fetchKind3(pubkey, allRelays)
     if (!contactEvent) {
+      isLoadingRef.current = false
       setState((s) => ({
         ...s,
         isLoading: false,
@@ -197,6 +210,7 @@ export function useNostr() {
     )
 
     unsubscribeProfilesRef.current = unsubscribeProfiles
+    isLoadingRef.current = false
   }, [t])
 
   const startAnalysis = useCallback(async () => {

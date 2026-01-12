@@ -1,6 +1,6 @@
 import { createRxNostr, createRxBackwardReq, noopVerifier, type RxNostr } from 'rx-nostr'
 import { nip19 } from 'nostr-tools'
-import { BOOTSTRAP_RELAYS, TIMEOUT_MS, LIMIT_EVENTS } from '../constants'
+import { BOOTSTRAP_RELAYS, TIMEOUT_MS, LIMIT_EVENTS, BATCH_SIZE_AUTHORS } from '../constants'
 import type { NostrEvent, UserProfile, RelayInfo } from '../types'
 
 let rxNostr: RxNostr | null = null
@@ -75,7 +75,6 @@ interface SubStatus {
 }
 
 const subscriptionStatuses: SubStatus[] = []
-let subIdCounter = 0
 
 export function recordSubStart(id: string, purpose: string, kind: number, relay: string, authors: string[]): void {
   const filter = `authors:[${authors.map(a => a.slice(0, 8)).join(',')}]`
@@ -118,7 +117,6 @@ export function recordSubError(id: string, relay: string, errorMsg: string): voi
 
 export function clearSubStatuses(): void {
   subscriptionStatuses.length = 0
-  subIdCounter = 0
 }
 
 export function dumpsub(): void {
@@ -127,36 +125,59 @@ export function dumpsub(): void {
   const finished = subscriptionStatuses.filter(s => s.status !== 'working')
   const working = subscriptionStatuses.filter(s => s.status === 'working')
 
-  console.log(`finished subscriptions: (${finished.length})`)
-  console.log(`----------------`)
+  console.log(`--- finished subscriptions ---`)
   for (const sub of finished) {
     const errInfo = sub.errorMsg ? ` (${sub.errorMsg})` : ''
     console.log(`  purpose:${sub.purpose}, relay:${sub.relay}, kind:${sub.kind}, filter:${sub.filter}, status:${sub.status}${errInfo}`)
   }
 
-  console.log(`working subscriptions: (${working.length})`)
-  console.log(`----------------`)
+  console.log(`--- working subscriptions ---`)
   for (const sub of working) {
     console.log(`  purpose:${sub.purpose}, relay:${sub.relay}, kind:${sub.kind}, filter:${sub.filter}, status:${sub.status}`)
   }
+
+  console.log(`================`)
+  console.log(`finished subscriptions: (${finished.length})`)
+  console.log(`working subscriptions: (${working.length})`)
+}
+
+export function dumpsubsum(): void {
+  console.log(`=== Working Subscriptions Summary ===`)
+
+  const working = subscriptionStatuses.filter(s => s.status === 'working')
+  const relayCounts = new Map<string, number>()
+
+  for (const sub of working) {
+    const count = relayCounts.get(sub.relay) || 0
+    relayCounts.set(sub.relay, count + 1)
+  }
+
+  const sortedRelays = Array.from(relayCounts.entries()).sort((a, b) => b[1] - a[1])
+
+  let seqno = 1
+  for (const [relay, count] of sortedRelays) {
+    console.log(`${seqno}:${relay}:${count}`)
+    seqno++
+  }
+
+  console.log(`----------------`)
+  console.log(`total working: ${working.length}`)
 }
 
 export function dumpqueue10002(): void {
   const requested = queue10002Status.requestedPubkeys.length
   const received = queue10002Status.receivedPubkeys.size
   const pending = requested - received
+  const batchSize = BATCH_SIZE_AUTHORS
   console.log(`=== kind:10002 Queue Status ===`)
+  console.log(`--- All pubkeys (batch, index, status, pubkey) ---`)
+  queue10002Status.requestedPubkeys.forEach((pubkey, index) => {
+    const batchNum = Math.floor(index / batchSize) + 1
+    const status = queue10002Status.receivedPubkeys.has(pubkey) ? 'OK' : '--'
+    console.log(`  batch${batchNum}, #${index}, ${status}, ${pubkey}`)
+  })
+  console.log(`================`)
   console.log(`Requested: ${requested}, Received: ${received}, Pending: ${pending}`)
-  console.log(`--- Received pubkeys (${received}): ---`)
-  queue10002Status.receivedPubkeys.forEach((pubkey) => {
-    console.log(`  ${pubkey}`)
-  })
-  console.log(`--- Pending pubkeys (${pending}): ---`)
-  queue10002Status.requestedPubkeys.forEach((pubkey) => {
-    if (!queue10002Status.receivedPubkeys.has(pubkey)) {
-      console.log(`  ${pubkey}`)
-    }
-  })
 }
 
 export function dumpqueue0(): void {
@@ -164,17 +185,18 @@ export function dumpqueue0(): void {
   const received = queue0Status.receivedPubkeys.size
   const pending = requested - received
   console.log(`=== kind:0 Queue Status ===`)
-  console.log(`Requested: ${requested}, Received: ${received}, Pending: ${pending}`)
-  console.log(`--- Received pubkeys (${received}): ---`)
+  console.log(`--- Received pubkeys ---`)
   queue0Status.receivedPubkeys.forEach((pubkey) => {
     console.log(`  ${pubkey}`)
   })
-  console.log(`--- Pending pubkeys (${pending}): ---`)
+  console.log(`--- Pending pubkeys ---`)
   queue0Status.requestedPubkeys.forEach((pubkey) => {
     if (!queue0Status.receivedPubkeys.has(pubkey)) {
       console.log(`  ${pubkey}`)
     }
   })
+  console.log(`================`)
+  console.log(`Requested: ${requested}, Received: ${received}, Pending: ${pending}`)
 }
 
 export function dumpStatus(): void {
@@ -537,11 +559,13 @@ export function subscribeFolloweesKind10002(
   pubkeys: string[],
   relays: string[],
   callbacks: FolloweeRelayCallback,
-  batchSize: number = 3
+  batchSize: number = 20
 ): () => void {
   const client = getRxNostr()
   const healthyRelays = filterHealthyRelays(relays)
+  console.log(`[10002] Using ${healthyRelays.length} relays:`, healthyRelays)
   if (healthyRelays.length === 0) {
+    console.log(`[10002] No healthy relays available!`)
     return () => {}
   }
   client.setDefaultRelays(healthyRelays)
@@ -558,11 +582,13 @@ export function subscribeFolloweesKind10002(
 
   const processBatch = (batchIndex: number) => {
     if (cancelled || batchIndex >= totalBatches) {
+      console.log(`[10002] All ${totalBatches} batches completed`)
       return
     }
 
     const start = batchIndex * batchSize
     const batch = pubkeys.slice(start, start + batchSize)
+    console.log(`[10002] Starting batch ${batchIndex + 1}/${totalBatches} with ${batch.length} authors:`, batch.map(p => p.slice(0, 8)))
     const req = createRxBackwardReq()
 
     // Record subscription start for each relay
@@ -571,12 +597,20 @@ export function subscribeFolloweesKind10002(
       recordSubStart(subId, 'followee relay list', 10002, relay, batch)
     }
 
-    const relaysResponded = new Set<string>()
+    let batchCompleted = false
+    const completeBatch = () => {
+      if (batchCompleted || cancelled) return
+      batchCompleted = true
+      for (const relay of healthyRelays) {
+        recordSubEOSE(subId, relay)
+      }
+      processBatch(batchIndex + 1)
+    }
 
     currentSubscription = client.use(req).subscribe({
       next: (packet) => {
         const event = packet.event as NostrEvent
-        relaysResponded.add(packet.from)
+        console.log(`[10002] Received event from ${packet.from} for ${event.pubkey.slice(0, 8)}`)
         const existing = latestEvents.get(event.pubkey)
         if (!existing || event.created_at > existing.created_at) {
           latestEvents.set(event.pubkey, event)
@@ -585,28 +619,24 @@ export function subscribeFolloweesKind10002(
         }
       },
       error: (err) => {
+        console.log(`[10002] Error in batch ${batchIndex}: ${err}`)
         for (const relay of healthyRelays) {
           recordSubError(subId, relay, String(err))
         }
-        processBatch(batchIndex + 1)
+        completeBatch()
       },
       complete: () => {
-        // Mark relays that responded as EOSE, others as no response
-        for (const relay of healthyRelays) {
-          if (relaysResponded.has(relay)) {
-            recordSubEOSE(subId, relay)
-          } else {
-            recordSubStatus(subId, relay, 'EOSE')
-          }
-        }
-        processBatch(batchIndex + 1)
+        console.log(`[10002] Batch ${batchIndex} complete`)
+        completeBatch()
       },
     })
 
-    req.emit([{
+    const filter = {
       kinds: [10002],
       authors: batch,
-    }])
+    }
+    console.log(`[10002] Filter:`, JSON.stringify(filter))
+    req.emit([filter])
     req.over()
   }
 
@@ -625,7 +655,7 @@ export function subscribeFolloweesKind0(
   pubkeys: string[],
   relays: string[],
   callbacks: ProfileCallback,
-  batchSize: number = 3
+  batchSize: number = 20
 ): () => void {
   const client = getRxNostr()
   const healthyRelays = filterHealthyRelays(relays)
@@ -641,6 +671,7 @@ export function subscribeFolloweesKind0(
   const latestEvents = new Map<string, NostrEvent>()
   let cancelled = false
   let currentSubscription: { unsubscribe: () => void } | null = null
+  let batchTimeoutId: ReturnType<typeof setTimeout> | null = null
 
   const totalBatches = Math.ceil(pubkeys.length / batchSize)
 
@@ -658,12 +689,24 @@ export function subscribeFolloweesKind0(
     for (const relay of healthyRelays) {
       recordSubStart(subId, 'followee profile', 0, relay, batch)
     }
-    const relaysResponded = new Set<string>()
+
+    let batchCompleted = false
+    const completeBatch = () => {
+      if (batchCompleted || cancelled) return
+      batchCompleted = true
+      if (batchTimeoutId) {
+        clearTimeout(batchTimeoutId)
+        batchTimeoutId = null
+      }
+      for (const relay of healthyRelays) {
+        recordSubEOSE(subId, relay)
+      }
+      processBatch(batchIndex + 1)
+    }
 
     currentSubscription = client.use(req).subscribe({
       next: (packet) => {
         const event = packet.event as NostrEvent
-        relaysResponded.add(packet.from)
         const existing = latestEvents.get(event.pubkey)
         if (!existing || event.created_at > existing.created_at) {
           latestEvents.set(event.pubkey, event)
@@ -675,13 +718,11 @@ export function subscribeFolloweesKind0(
         for (const relay of healthyRelays) {
           recordSubError(subId, relay, String(err))
         }
-        processBatch(batchIndex + 1)
+        // Don't start next batch on error - wait for timeout
       },
       complete: () => {
-        for (const relay of healthyRelays) {
-          recordSubEOSE(subId, relay)
-        }
-        processBatch(batchIndex + 1)
+        // Don't start next batch on complete - wait for timeout
+        // rx-nostr may complete before all relays respond
       },
     })
 
@@ -690,6 +731,11 @@ export function subscribeFolloweesKind0(
       authors: batch,
     }])
     req.over()
+
+    // Wait fixed time before starting next batch
+    batchTimeoutId = setTimeout(() => {
+      completeBatch()
+    }, TIMEOUT_MS)
   }
 
   // Start processing first batch
@@ -697,6 +743,9 @@ export function subscribeFolloweesKind0(
 
   return () => {
     cancelled = true
+    if (batchTimeoutId) {
+      clearTimeout(batchTimeoutId)
+    }
     if (currentSubscription) {
       currentSubscription.unsubscribe()
     }
