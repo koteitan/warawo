@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "warawo: Nostr Relay Analysis"
+    "title": "warawo: Nostr Followee Relay Analysis"
   },
   "actions": {
     "analyzeFollowees": "Analyze Followees"

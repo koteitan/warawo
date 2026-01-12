@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "warawo: Nostr リレー分析"
+    "title": "warawo: Nostr フォロイーリレー分析"
   },
   "actions": {
     "analyzeFollowees": "フォロイーを分析"

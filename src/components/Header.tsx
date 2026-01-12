@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { UserProfile } from '../types'
 import { hasNip07Extension } from '../services/nip07'
 import { hexToNpub } from '../utils/pubkey'
+import { VERSION_NAME } from '../version'
 
 interface HeaderProps {
   pubkey: string
@@ -51,7 +52,7 @@ export function Header({
 
   return (
     <header className="header">
-      <h1 className="app-title">(｡&gt;_&lt;)o--{t('app.title')}</h1>
+      <h1 className="app-title">(｡&gt;_&lt;)o--{t('app.title')} {VERSION_NAME}</h1>
       <div className="toolbar">
         <label className="pubkey-label">
           as pubkey:

@@ -82,18 +82,23 @@ export async function fetchKind10002(
   client.setDefaultRelays(relays)
 
   return new Promise((resolve) => {
-    let latestEvent: NostrEvent | null = null
+    let resolved = false
     const req = createRxBackwardReq()
 
     const subscription = client.use(req).subscribe({
       next: (packet) => {
-        const event = packet.event as NostrEvent
-        if (!latestEvent || event.created_at > latestEvent.created_at) {
-          latestEvent = event
+        if (!resolved) {
+          resolved = true
+          req.over()
+          subscription.unsubscribe()
+          resolve(packet.event as NostrEvent)
         }
       },
       complete: () => {
-        resolve(latestEvent)
+        if (!resolved) {
+          resolved = true
+          resolve(null)
+        }
       },
     })
 
@@ -104,9 +109,12 @@ export async function fetchKind10002(
     }])
 
     setTimeout(() => {
-      req.over()
-      subscription.unsubscribe()
-      resolve(latestEvent)
+      if (!resolved) {
+        resolved = true
+        req.over()
+        subscription.unsubscribe()
+        resolve(null)
+      }
     }, timeoutMs)
   })
 }
@@ -120,18 +128,23 @@ export async function fetchKind3(
   client.setDefaultRelays(relays)
 
   return new Promise((resolve) => {
-    let latestEvent: NostrEvent | null = null
+    let resolved = false
     const req = createRxBackwardReq()
 
     const subscription = client.use(req).subscribe({
       next: (packet) => {
-        const event = packet.event as NostrEvent
-        if (!latestEvent || event.created_at > latestEvent.created_at) {
-          latestEvent = event
+        if (!resolved) {
+          resolved = true
+          req.over()
+          subscription.unsubscribe()
+          resolve(packet.event as NostrEvent)
         }
       },
       complete: () => {
-        resolve(latestEvent)
+        if (!resolved) {
+          resolved = true
+          resolve(null)
+        }
       },
     })
 
@@ -142,9 +155,12 @@ export async function fetchKind3(
     }])
 
     setTimeout(() => {
-      req.over()
-      subscription.unsubscribe()
-      resolve(latestEvent)
+      if (!resolved) {
+        resolved = true
+        req.over()
+        subscription.unsubscribe()
+        resolve(null)
+      }
     }, timeoutMs)
   })
 }
@@ -158,18 +174,23 @@ export async function fetchKind0(
   client.setDefaultRelays(relays)
 
   return new Promise((resolve) => {
-    let latestEvent: NostrEvent | null = null
+    let resolved = false
     const req = createRxBackwardReq()
 
     const subscription = client.use(req).subscribe({
       next: (packet) => {
-        const event = packet.event as NostrEvent
-        if (!latestEvent || event.created_at > latestEvent.created_at) {
-          latestEvent = event
+        if (!resolved) {
+          resolved = true
+          req.over()
+          subscription.unsubscribe()
+          resolve(packet.event as NostrEvent)
         }
       },
       complete: () => {
-        resolve(latestEvent)
+        if (!resolved) {
+          resolved = true
+          resolve(null)
+        }
       },
     })
 
@@ -180,9 +201,12 @@ export async function fetchKind0(
     }])
 
     setTimeout(() => {
-      req.over()
-      subscription.unsubscribe()
-      resolve(latestEvent)
+      if (!resolved) {
+        resolved = true
+        req.over()
+        subscription.unsubscribe()
+        resolve(null)
+      }
     }, timeoutMs)
   })
 }
