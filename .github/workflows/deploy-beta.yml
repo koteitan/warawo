@@ -35,7 +35,6 @@ jobs:
       - name: Deploy to GitHub Pages (koteitan.github.io)
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          token: ${{ secrets.DEPLOY_TOKEN }}
           repository-name: koteitan/koteitan.github.io
           branch: main
           folder: dist
