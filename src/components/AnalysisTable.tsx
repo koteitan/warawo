@@ -97,6 +97,14 @@ export function AnalysisTable({
 
   return (
     <table className="analysis-table">
+      <colgroup>
+        <col style={{ width: '4.2rem' }} />
+        <col style={{ width: '40px' }} />
+        <col style={{ width: '11.2rem' }} />
+        <col style={{ width: '14rem' }} />
+        <col style={{ width: '4.2rem' }} />
+        <col />
+      </colgroup>
       <thead>
         <tr>
           <th>{t('table.rank')}</th>

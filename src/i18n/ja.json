@@ -22,7 +22,7 @@
     "you": "あなた",
     "name": "名前",
     "displayName": "表示名",
-    "coverage": "カバレッジ",
+    "coverage": "接続数",
     "relays": "リレー"
   },
   "messages": {

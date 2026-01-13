@@ -15,7 +15,8 @@ i18n
     },
     fallbackLng: 'en',
     detection: {
-      order: ['navigator', 'htmlTag'],
+      order: ['querystring', 'navigator', 'htmlTag'],
+      lookupQuerystring: 'lang',
       caches: [],
     },
     interpolation: {

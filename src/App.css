@@ -196,7 +196,7 @@
 .analysis-table td {
   padding: 0.5rem;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #666;
   vertical-align: top;
 }
 
@@ -218,12 +218,10 @@
 }
 
 .rank-cell {
-  width: 60px;
   text-align: center;
 }
 
 .icon-cell {
-  width: 40px;
 }
 
 .followee-icon,
@@ -243,8 +241,6 @@
 }
 
 .name-cell {
-  min-width: 100px;
-  max-width: 150px;
 }
 
 .name-cell a,
@@ -260,8 +256,6 @@
 }
 
 .display-name-cell {
-  min-width: 120px;
-  max-width: 200px;
   color: #666;
 }
 
@@ -274,7 +268,6 @@
 }
 
 .coverage-cell {
-  width: 80px;
   text-align: center;
 }
 
@@ -284,7 +277,7 @@
 }
 
 .relays-cell {
-  min-width: 200px;
+  /* Takes remaining space */
 }
 
 /* Relay List */
