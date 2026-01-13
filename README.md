@@ -1,73 +1,112 @@
-# React + TypeScript + Vite
+# warawo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Nostr relay analysis tool that helps you understand your followers' relay coverage.
 
-Currently, two official plugins are available:
+**Live Demo**: https://koteitan.github.io/warawo/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Overview
 
-## React Compiler
+warawo fetches your followers (contacts) from the Nostr network, examines where each follower publishes their content (write relays), and compares those relays against your read relays. It identifies gaps - which followers' relays you cannot read from - helping you optimize your relay configuration.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Key features:
+- Analyze relay coverage for all your followees
+- Identify missing relays where important followers publish
+- Visual color-coded indicators showing relay status
+- Support for NIP-07 browser extensions
+- Multi-language support (English/Japanese)
 
-## Expanding the ESLint configuration
+## For Users
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### How to Use
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. Open the app at https://koteitan.github.io/warawo/
+2. Enter your Nostr public key (hex or npub format) or click "Load from extension" if you have a NIP-07 browser extension installed
+3. Wait for your profile and followee list to load
+4. Click "Analyze Followees" to start the relay analysis
+5. View the results table showing:
+   - **Rank**: Followees sorted by coverage (lower coverage = harder to reach)
+   - **Coverage**: Number of their write relays that you can read from
+   - **Relays**: Green = readable, Red = unreadable
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Understanding the Results
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Followees with **low coverage** (especially 0) are publishing to relays you don't read from
+- Consider adding their write relays to your relay list to improve coverage
+- The analysis helps you discover which relays you might be missing
+
+## For Developers
+
+### Requirements
+
+- Node.js 22 or later
+- npm
+
+### Installation
+
+```bash
+git clone https://github.com/koteitan/warawo.git
+cd warawo
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Start the development server with hot module replacement:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+The app will be available at http://localhost:5173/warawo/
+
+### Build
+
+Build for production:
+
+```bash
+npm run build
+```
+
+The built files will be in the `dist/` directory.
+
+### Other Commands
+
+```bash
+# Run linter
+npm run lint
+
+# Run tests
+npm test
+
+# Run tests once (CI mode)
+npm run test:run
+
+# Preview production build
+npm run preview
+```
+
+### Tech Stack
+
+- **React 19** - UI framework
+- **TypeScript** - Type-safe JavaScript
+- **Vite** - Build tool
+- **rx-nostr** - Reactive Nostr client
+- **nostr-tools** - Nostr utilities
+- **i18next** - Internationalization
+- **Vitest** - Testing framework
+
+### Deployment
+
+The app is automatically deployed to GitHub Pages when pushing to the main branch via the GitHub Actions workflow in `.github/workflows/static.yml`.
+
+## License
+
+MIT License
+
+## References
+
+- [Nostr Protocol](https://github.com/nostr-protocol/nostr)
+- [NIP-02: Contact List](https://github.com/nostr-protocol/nips/blob/master/02.md)
+- [NIP-07: Browser Extensions](https://github.com/nostr-protocol/nips/blob/master/07.md)
+- [NIP-65: Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)
+- [rx-nostr](https://github.com/penpenpng/rx-nostr)

@@ -39,12 +39,12 @@ function UserRow({ profile, readRelays, t }: { profile: UserProfile; readRelays:
         </a>
       </td>
       <td className="name-cell">
-        <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
+        <a href={nostterUrl} target="_blank" rel="noopener noreferrer" title={profile.name || undefined}>
           {profile.name || '-'}
         </a>
       </td>
       <td className="display-name-cell">
-        <a href={nostterUrl} target="_blank" rel="noopener noreferrer">
+        <a href={nostterUrl} target="_blank" rel="noopener noreferrer" title={profile.display_name || undefined}>
           {profile.display_name || '-'}
         </a>
       </td>

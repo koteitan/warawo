@@ -189,6 +189,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  table-layout: fixed;
 }
 
 .analysis-table th,
@@ -243,6 +244,7 @@
 
 .name-cell {
   min-width: 100px;
+  max-width: 150px;
 }
 
 .name-cell a,
@@ -259,7 +261,16 @@
 
 .display-name-cell {
   min-width: 120px;
+  max-width: 200px;
   color: #666;
+}
+
+.name-cell a,
+.display-name-cell a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .coverage-cell {
