@@ -1,4 +1,4 @@
-# warawo (藁をも掴む)
+# warawo
 
 A Nostr relay analysis tool that helps you understand your followers' relay coverage.
 
