@@ -30,13 +30,12 @@ jobs:
         run: npm ci
 
       - name: Build with beta base path
-        run: npm run build -- --base=/beta/warawo/${{ steps.branch.outputs.name }}/
+        run: npm run build -- --base=/warawo/beta/${{ steps.branch.outputs.name }}/
 
-      - name: Deploy to GitHub Pages (koteitan.github.io)
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          repository-name: koteitan/koteitan.github.io
-          branch: main
+          branch: gh-pages
           folder: dist
-          target-folder: beta/warawo/${{ steps.branch.outputs.name }}
+          target-folder: beta/${{ steps.branch.outputs.name }}
           clean: false
