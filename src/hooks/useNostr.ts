@@ -53,6 +53,7 @@ export function useNostr() {
   const followeeRelaysRef = useRef<Map<string, NostrEvent>>(new Map())
   const userReadRelaysRef = useRef<string[]>([])
   const isLoadingRef = useRef(false)
+  const analysisCompleteRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -244,6 +245,8 @@ export function useNostr() {
       return
     }
 
+    analysisCompleteRef.current = false
+
     setState((s) => ({
       ...s,
       isAnalyzing: true,
@@ -255,11 +258,8 @@ export function useNostr() {
     userReadRelaysRef.current = userReadRelays
     const allReadRelays = [...new Set([...userReadRelays, ...BOOTSTRAP_RELAYS])]
 
-    const initialStatuses: RelayStatusItem[] = allReadRelays.map((url) => ({
-      url,
-      status: 'wait',
-    }))
-    setState((s) => ({ ...s, relayStatuses: initialStatuses }))
+    // Reset the accumulating relay status bar for this analysis run
+    setState((s) => ({ ...s, relayStatuses: [] }))
 
     // Track analyzed pubkeys (count unique pubkeys that received relay info)
     const analyzedPubkeys = new Set<string>()
@@ -319,7 +319,11 @@ export function useNostr() {
         return {
           ...s,
           followeeAnalyses: sorted,
-          statusMessage: t('messages.analyzingFollowees', { current: analyzedPubkeys.size, total: followees.length }),
+          // Don't revert to the "analyzing" message once analysis has completed
+          // (late events can still arrive after onComplete).
+          statusMessage: analysisCompleteRef.current
+            ? s.statusMessage
+            : t('messages.analyzingFollowees', { current: analyzedPubkeys.size, total: followees.length }),
         }
       })
     }
@@ -347,15 +351,18 @@ export function useNostr() {
           // Update analysis with merged relay info
           await updateFolloweeAnalysis(followeePubkey)
         },
-        onRelayStatus: (relay, status) => {
-          setState((s) => ({
-            ...s,
-            relayStatuses: s.relayStatuses.map((r) =>
-              r.url === relay ? { ...r, status } : r
-            ),
-          }))
+        onRelayStatus: (id, url, status) => {
+          setState((s) => {
+            const existing = s.relayStatuses.find((r) => r.id === id)
+            // Accumulate: append a new block per batch/relay, update in place if seen
+            const relayStatuses = existing
+              ? s.relayStatuses.map((r) => (r.id === id ? { ...r, status } : r))
+              : [...s.relayStatuses, { id, url, status }]
+            return { ...s, relayStatuses }
+          })
         },
         onComplete: () => {
+          analysisCompleteRef.current = true
           setState((s) => ({
             ...s,
             isAnalyzing: false,

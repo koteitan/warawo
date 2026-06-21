@@ -24,6 +24,7 @@ export interface FolloweeAnalysis {
 }
 
 export interface RelayStatusItem {
+  id: string
   url: string
   status: RelayStatus
 }

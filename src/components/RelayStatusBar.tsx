@@ -1,22 +1,17 @@
 import type { RelayStatusItem } from '../types'
-import { RELAY_STATUS_COLORS, RELAY_STATUS_ORDER } from '../constants'
+import { RELAY_STATUS_COLORS } from '../constants'
 
 interface RelayStatusBarProps {
   statuses: RelayStatusItem[]
 }
 
 export function RelayStatusBar({ statuses }: RelayStatusBarProps) {
-  const sortedStatuses = [...statuses].sort((a, b) => {
-    const orderA = RELAY_STATUS_ORDER.indexOf(a.status as typeof RELAY_STATUS_ORDER[number])
-    const orderB = RELAY_STATUS_ORDER.indexOf(b.status as typeof RELAY_STATUS_ORDER[number])
-    return orderA - orderB
-  })
-
+  // Render in accumulation (insertion) order so the bar grows across batches
   return (
     <div className="relay-status-bar">
-      {sortedStatuses.map((item) => (
+      {statuses.map((item) => (
         <span
-          key={item.url}
+          key={item.id}
           className="relay-status-char"
           style={{ color: RELAY_STATUS_COLORS[item.status] }}
           title={`${item.url}: ${item.status}`}

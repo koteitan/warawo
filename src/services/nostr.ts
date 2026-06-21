@@ -587,7 +587,7 @@ export async function fetchKind0(
 
 export interface FolloweeRelayCallback {
   onEvent: (pubkey: string, event: NostrEvent, kind: number) => void
-  onRelayStatus: (relay: string, status: 'connecting' | 'loading' | 'eose' | 'timeout' | 'error') => void
+  onRelayStatus: (id: string, url: string, status: 'wait' | 'connecting' | 'loading' | 'eose' | 'timeout' | 'error') => void
   onComplete?: () => void
 }
 
@@ -635,6 +635,35 @@ export function subscribeFolloweesRelayList(
     return () => {}
   }
 
+  // Stable block id per (batch, relay). Normalize the URL so the id matches
+  // whether it comes from our relay list or from a relay's EOSE/EVENT packet
+  // (which rx-nostr may return with a trailing slash / different case).
+  const blockId = (sid: string, url: string) => `${sid}:${normalizeRelayUrlForTracking(url)}`
+
+  // Pre-seed every (batch, relay) block as pending (grey) so the whole bar is
+  // visible up-front and fills in with color as batches run.
+  const initialRelays = filterHealthyRelays(relays)
+  for (let b = 0; b < totalBatches; b++) {
+    const sid = `relaylist-batch-${b}`
+    for (const relay of initialRelays) {
+      callbacks.onRelayStatus(blockId(sid, relay), relay, 'wait')
+    }
+  }
+
+  // Per-relay EOSE: rx-nostr's use() stream only signals completion for the
+  // whole batch, so listen to all messages and turn each relay's block blue as
+  // soon as that relay sends EOSE. subId wire format is `${rxReqId}:${index}`.
+  const eoseHandlers = new Map<string, (from: string) => void>()
+  const messageSub = client.createAllMessageObservable().subscribe((packet) => {
+    if (packet.type !== 'EOSE') return
+    for (const [reqId, handler] of eoseHandlers) {
+      if (packet.subId === reqId || packet.subId.startsWith(`${reqId}:`)) {
+        handler(packet.from)
+        break
+      }
+    }
+  })
+
   const startNextBatch = () => {
     if (cancelled || nextBatchIndex >= totalBatches) {
       return
@@ -648,6 +677,7 @@ export function subscribeFolloweesRelayList(
     if (healthyRelays.length === 0) {
       completedBatches++
       if (completedBatches >= totalBatches) {
+        messageSub.unsubscribe()
         callbacks.onComplete?.()
       }
       return
@@ -656,18 +686,36 @@ export function subscribeFolloweesRelayList(
 
     const start = batchIndex * batchSize
     const batch = pubkeys.slice(start, start + batchSize)
-    const req = createRxBackwardReq()
+    const subId = `relaylist-batch-${batchIndex}`
+    const req = createRxBackwardReq(subId)
+
+    // Track which relays in this batch have already reached their final state
+    // so late events don't repaint them and timeout only hits the stragglers.
+    const eosedRelays = new Set<string>()
+    const loadingRelays = new Set<string>()
+    const healthyNorm = new Set(healthyRelays.map(normalizeRelayUrlForTracking))
+
+    eoseHandlers.set(subId, (from) => {
+      const norm = normalizeRelayUrlForTracking(from)
+      if (!healthyNorm.has(norm) || eosedRelays.has(norm)) return
+      eosedRelays.add(norm)
+      callbacks.onRelayStatus(blockId(subId, from), from, 'eose')
+    })
 
     // Record subscription start for each relay
-    const subId = `relaylist-batch-${batchIndex}`
     for (const relay of healthyRelays) {
       recordSubStart(subId, 'followee relay list', kinds[0], relay, batch)
+      callbacks.onRelayStatus(blockId(subId, relay), relay, 'connecting')
     }
 
     let batchCompleted = false
     let batchTimeoutId: ReturnType<typeof setTimeout> | null = null
 
-    const completeBatch = () => {
+    // reason: 'complete' = batch EOSE'd, 'timeout' = fallback, 'error' = ws error.
+    // Relays that already turned blue via per-relay EOSE keep their state; only
+    // the stragglers get marked timeout/error (so a slow relay doesn't drag the
+    // whole batch dark green).
+    const completeBatch = (reason: 'complete' | 'timeout' | 'error') => {
       if (batchCompleted || cancelled) return
       batchCompleted = true
       if (batchTimeoutId) {
@@ -675,11 +723,18 @@ export function subscribeFolloweesRelayList(
         const idx = batchTimeouts.indexOf(batchTimeoutId)
         if (idx !== -1) batchTimeouts.splice(idx, 1)
       }
+      const stragglerStatus = reason === 'timeout' ? 'timeout' : reason === 'error' ? 'error' : 'eose'
       for (const relay of healthyRelays) {
         recordSubEOSE(subId, relay)
+        const norm = normalizeRelayUrlForTracking(relay)
+        if (!eosedRelays.has(norm)) {
+          callbacks.onRelayStatus(blockId(subId, relay), relay, stragglerStatus)
+        }
       }
+      eoseHandlers.delete(subId)
       completedBatches++
       if (completedBatches >= totalBatches) {
+        messageSub.unsubscribe()
         callbacks.onComplete?.()
       } else {
         // Start next batch when one completes
@@ -691,6 +746,17 @@ export function subscribeFolloweesRelayList(
       next: (packet) => {
         const event = packet.event as NostrEvent
         const kind = event.kind
+
+        // Paint 'loading' (green) once, the first time this relay returns an
+        // event while the batch is open and it hasn't yet EOSE'd. Later events
+        // are ignored for the bar but still count for coverage below.
+        if (!batchCompleted && packet.from) {
+          const norm = normalizeRelayUrlForTracking(packet.from)
+          if (healthyNorm.has(norm) && !eosedRelays.has(norm) && !loadingRelays.has(norm)) {
+            loadingRelays.add(norm)
+            callbacks.onRelayStatus(blockId(subId, packet.from), packet.from, 'loading')
+          }
+        }
 
         if (kind === 10002) {
           const existing = latestEvents10002.get(event.pubkey)
@@ -712,10 +778,10 @@ export function subscribeFolloweesRelayList(
         for (const relay of healthyRelays) {
           recordSubError(subId, relay, String(err))
         }
-        completeBatch()
+        completeBatch('error')
       },
       complete: () => {
-        completeBatch()
+        completeBatch('complete')
       },
     })
 
@@ -727,10 +793,13 @@ export function subscribeFolloweesRelayList(
     }])
     req.over()
 
-    // Timeout fallback in case complete callback never fires
+    // Timeout fallback in case complete callback never fires.
+    // Must be longer than rx-nostr's internal eoseTimeout (TIMEOUT_MS) so the
+    // real EOSE-driven complete() wins the race and the block turns blue (eose)
+    // instead of dark green (timeout).
     batchTimeoutId = setTimeout(() => {
-      completeBatch()
-    }, TIMEOUT_MS)
+      completeBatch('timeout')
+    }, TIMEOUT_MS * 2)
     batchTimeouts.push(batchTimeoutId)
   }
 
@@ -741,6 +810,7 @@ export function subscribeFolloweesRelayList(
 
   return () => {
     cancelled = true
+    messageSub.unsubscribe()
     for (const timeout of batchTimeouts) {
       clearTimeout(timeout)
     }

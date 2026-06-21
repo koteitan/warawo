@@ -92,6 +92,8 @@
   font-size: 1rem;
   line-height: 1;
   letter-spacing: -2px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .relay-status-char {
