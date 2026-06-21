@@ -125,11 +125,34 @@
 }
 
 /* Analyze Section */
-.analyze-section {
+.controls-bar {
   margin: 1rem 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.analyze-section {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+/* Push the download button to the right edge on desktop */
+.download-section {
+  margin-left: auto;
+}
+
+/* Stack vertically on mobile, download below */
+@media (max-width: 600px) {
+  .controls-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .download-section {
+    margin-left: 0;
+  }
 }
 
 .analyze-button {
@@ -152,6 +175,23 @@
 .analyze-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.download-button {
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.download-button:hover {
+  background: #444;
+  border-color: #666;
 }
 
 /* Kind Checkboxes */

@@ -7,6 +7,7 @@ import { useNostr } from './hooks/useNostr'
 import { dump } from './utils/debug'
 import { dumprelaylist, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub, dumpsubsum } from './services/nostr'
 import { isMobileDevice } from './utils/mobile'
+import { downloadResults } from './utils/exportResults'
 import './App.css'
 
 function App() {
@@ -106,35 +107,56 @@ function App() {
             {t('messages.enterPubkey')}
           </div>
         )}
-        {canAnalyze && (
-          <div className="analyze-section">
-            <button
-              className="analyze-button"
-              onClick={() => startAnalysis({ useKind10002, useKind3 })}
-              disabled={isAnalyzing || (!useKind10002 && !useKind3)}
-            >
-              {t('actions.analyzeFollowees')}
-            </button>
-            <div className="kind-checkboxes">
-              <label className="kind-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={useKind10002}
-                  onChange={(e) => setUseKind10002(e.target.checked)}
-                  disabled={isAnalyzing}
-                />
-                kind:10002
-              </label>
-              <label className="kind-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={useKind3}
-                  onChange={(e) => setUseKind3(e.target.checked)}
-                  disabled={isAnalyzing}
-                />
-                kind:3
-              </label>
-            </div>
+        {(canAnalyze || followeeAnalyses.length > 0) && (
+          <div className="controls-bar">
+            {canAnalyze && (
+              <div className="analyze-section">
+                <button
+                  className="analyze-button"
+                  onClick={() => startAnalysis({ useKind10002, useKind3 })}
+                  disabled={isAnalyzing || (!useKind10002 && !useKind3)}
+                >
+                  {t('actions.analyzeFollowees')}
+                </button>
+                <div className="kind-checkboxes">
+                  <label className="kind-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={useKind10002}
+                      onChange={(e) => setUseKind10002(e.target.checked)}
+                      disabled={isAnalyzing}
+                    />
+                    kind:10002
+                  </label>
+                  <label className="kind-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={useKind3}
+                      onChange={(e) => setUseKind3(e.target.checked)}
+                      disabled={isAnalyzing}
+                    />
+                    kind:3
+                  </label>
+                </div>
+              </div>
+            )}
+            {followeeAnalyses.length > 0 && (
+              <div className="download-section">
+                <button
+                  className="download-button"
+                  onClick={() =>
+                    downloadResults({
+                      userProfile,
+                      followeeAnalyses,
+                      useKind10002,
+                      useKind3,
+                    })
+                  }
+                >
+                  {t('actions.downloadResults')}
+                </button>
+              </div>
+            )}
           </div>
         )}
         {followeeAnalyses.length > 0 && userProfile && (

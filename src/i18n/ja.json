@@ -3,7 +3,8 @@
     "title": "warawo: Nostr フォロイーリレー分析"
   },
   "actions": {
-    "analyzeFollowees": "フォロイーを分析"
+    "analyzeFollowees": "フォロイーを分析",
+    "downloadResults": "結果をダウンロード"
   },
   "header": {
     "pubkeyPlaceholder": "pubkey または npub を入力...",

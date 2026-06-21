@@ -3,7 +3,8 @@
     "title": "warawo: Nostr Followee Relay Analysis"
   },
   "actions": {
-    "analyzeFollowees": "Analyze Followees"
+    "analyzeFollowees": "Analyze Followees",
+    "downloadResults": "Download Results"
   },
   "header": {
     "pubkeyPlaceholder": "Enter pubkey or npub...",
