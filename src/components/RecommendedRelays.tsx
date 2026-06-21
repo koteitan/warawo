@@ -60,17 +60,17 @@ export function RecommendedRelays({ followeeAnalyses, limit = 10 }: RecommendedR
   return (
     <table className="recommended-table">
       <colgroup>
-        <col style={{ width: '4.2rem' }} />
-        <col />
+        <col className="rrt-rank-col" />
+        <col className="rrt-relay-col" />
         {coverageCols.map((k) => (
-          <col key={k} style={{ width: '5.5rem' }} />
+          <col key={k} className="rrt-recovery-col" />
         ))}
-        <col style={{ width: '5.5rem' }} />
+        <col className="rrt-recovery-col" />
       </colgroup>
       <thead>
         <tr>
-          <th rowSpan={2}>{t('table.rank')}</th>
-          <th rowSpan={2}>{t('recommended.recommendedRelay')}</th>
+          <th rowSpan={2} className="rrt-rank-cell">{t('table.rank')}</th>
+          <th rowSpan={2} className="rrt-relay-cell">{t('recommended.recommendedRelay')}</th>
           <th colSpan={coverageCols.length + 1}>{t('recommended.recoveryCount')}</th>
         </tr>
         <tr>
@@ -83,8 +83,8 @@ export function RecommendedRelays({ followeeAnalyses, limit = 10 }: RecommendedR
       <tbody>
         {shown.map((relay, index) => (
           <tr key={relay.url}>
-            <td className="rank-cell">{index + 1}</td>
-            <td className="recommended-relay-cell" title={relay.url}>
+            <td className="rank-cell rrt-rank-cell">{index + 1}</td>
+            <td className="recommended-relay-cell rrt-relay-cell" title={relay.url}>
               {relay.url}
             </td>
             {coverageCols.map((k) => (

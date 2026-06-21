@@ -4,7 +4,7 @@
   },
   "actions": {
     "analyzeFollowees": "Analyze Followees",
-    "downloadResults": "Download Results"
+    "downloadResults": "Download Results (json)"
   },
   "header": {
     "pubkeyPlaceholder": "Enter pubkey or npub...",

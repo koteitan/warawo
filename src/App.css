@@ -228,10 +228,9 @@
 
 /* Table */
 .recommended-table {
-  width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  table-layout: fixed;
+  table-layout: auto;
   margin-bottom: 1.5rem;
 }
 
@@ -249,11 +248,59 @@
   color: #fff;
 }
 
+/* Desktop column widths (reproduce the previous inline col widths exactly) */
+.rrt-rank-col {
+  width: 4.2rem;
+}
+
+.rrt-recovery-col {
+  width: 4rem;
+}
+
 .recommended-relay-cell {
   text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* size to the longest URL (no clipping) so the column fits its content */
   white-space: nowrap;
+}
+
+/* Mobile: drop the rank column, give the relay column priority (wraps so the
+   full URL stays readable), and split the rest equally across recovery cols. */
+@media (max-width: 600px) {
+  .recommended-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+  /* Hide the rank column WITHOUT removing the cells: display:none would shift
+     the remaining cells into the wrong columns under table-layout: fixed. */
+  .rrt-rank-col {
+    width: 0;
+  }
+  .recommended-table .rrt-rank-cell {
+    padding: 0;
+    overflow: hidden;
+    border: none;
+  }
+  .rrt-relay-col {
+    width: 34%;
+  }
+  .rrt-recovery-col {
+    width: 13.2%;
+  }
+  .recommended-table .rrt-relay-cell {
+    font-size: 0.62rem;
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
+  .recommended-table th,
+  .recommended-table td {
+    padding: 0.3rem 0.2rem;
+  }
+  .recommended-table .recovery-bar-label {
+    font-size: 0.65rem;
+    padding: 0 2px;
+  }
 }
 
 .recovery-cell {

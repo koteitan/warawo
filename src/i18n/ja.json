@@ -4,7 +4,7 @@
   },
   "actions": {
     "analyzeFollowees": "フォロイーを分析",
-    "downloadResults": "結果をダウンロード"
+    "downloadResults": "結果をダウンロード(json)"
   },
   "header": {
     "pubkeyPlaceholder": "pubkey または npub を入力...",
