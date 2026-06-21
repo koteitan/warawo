@@ -26,6 +26,10 @@
     "coverage": "Coverage",
     "relays": "Relays"
   },
+  "recommended": {
+    "recommendedRelay": "Recommended Relay",
+    "recoveryCount": "Followee Recovery"
+  },
   "messages": {
     "enterPubkey": "Please enter your pubkey",
     "loadingProfile": "Loading profile...",

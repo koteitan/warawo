@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Header } from './components/Header'
 import { RelayStatusBar } from './components/RelayStatusBar'
 import { AnalysisTable } from './components/AnalysisTable'
+import { RecommendedRelays } from './components/RecommendedRelays'
 import { useNostr } from './hooks/useNostr'
 import { dump } from './utils/debug'
 import { dumprelaylist, dumpqueue0, dumpRelayFailures, dumpStatus, dumpsub, dumpsubsum } from './services/nostr'
@@ -158,6 +159,9 @@ function App() {
               </div>
             )}
           </div>
+        )}
+        {followeeAnalyses.length > 0 && (
+          <RecommendedRelays followeeAnalyses={followeeAnalyses} />
         )}
         {followeeAnalyses.length > 0 && userProfile && (
           <AnalysisTable

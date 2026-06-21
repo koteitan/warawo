@@ -26,6 +26,10 @@
     "coverage": "接続数",
     "relays": "リレー"
   },
+  "recommended": {
+    "recommendedRelay": "おすすめリレー",
+    "recoveryCount": "フォロイー回復数"
+  },
   "messages": {
     "enterPubkey": "pubkeyを入力してください",
     "loadingProfile": "プロフィール読み込み中...",

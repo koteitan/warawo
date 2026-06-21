@@ -227,6 +227,39 @@
 }
 
 /* Table */
+.recommended-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+  margin-bottom: 1.5rem;
+}
+
+.recommended-table th,
+.recommended-table td {
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid #666;
+  vertical-align: middle;
+}
+
+.recommended-table th {
+  font-weight: 600;
+  background: #374151;
+  color: #fff;
+}
+
+.recommended-relay-cell {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recovery-cell {
+  font-variant-numeric: tabular-nums;
+}
+
 .analysis-table {
   width: 100%;
   border-collapse: collapse;
