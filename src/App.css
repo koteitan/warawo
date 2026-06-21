@@ -257,7 +257,24 @@
 }
 
 .recovery-cell {
+  padding: 3px 4px;
+}
+
+.recovery-bar {
+  position: relative;
+  height: 1.3rem;
+  border-radius: 2px;
+}
+
+.recovery-bar-label {
+  position: absolute;
+  top: 0;
+  line-height: 1.3rem;
+  font-size: 0.78rem;
+  padding: 0 3px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .analysis-table {

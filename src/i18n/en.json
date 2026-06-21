@@ -28,7 +28,8 @@
   },
   "recommended": {
     "recommendedRelay": "Recommended Relay",
-    "recoveryCount": "Followee Recovery"
+    "recoveryCount": "Followee Recovery",
+    "all": "All"
   },
   "messages": {
     "enterPubkey": "Please enter your pubkey",

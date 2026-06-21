@@ -28,7 +28,8 @@
   },
   "recommended": {
     "recommendedRelay": "おすすめリレー",
-    "recoveryCount": "フォロイー回復数"
+    "recoveryCount": "フォロイー回復数",
+    "all": "全部"
   },
   "messages": {
     "enterPubkey": "pubkeyを入力してください",
